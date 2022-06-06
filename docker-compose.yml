@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  front-end:
+    build:
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+      context: .
+      dockerfile: vue.dockerfile
+    container_name: vue-cryptonomicon
+    restart: unless-stopped
+    tty: true
+    working_dir: /usr/src/cryptonomicon
+    ports:
+      - "3000:8080"
+    volumes:
+      - .:/usr/src/cryptonomicon
