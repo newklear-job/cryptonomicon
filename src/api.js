@@ -2,6 +2,8 @@ const API_KEY =
   "380ec498044c900f249ad39326e8320a2cb4ee09b94afe4dff6911e37ef56bfc";
 
 const tickersHandlers = new Map(); // {}
+const doubleConvertedTickers = [];
+
 // CXC coin uses double conversion atm.
 const socket = new WebSocket(
   `wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`
@@ -15,51 +17,68 @@ const USD_CURRENCY = "USD";
 
 let btcToUsdPrice = null;
 
-
-//todo: implement correct unsubscribe with double conversion model.
 socket.addEventListener("message", e => {
-    const {
-      TYPE: type,
-      FROMSYMBOL: fromCurrency,
-      TOSYMBOL: toCurrency,
-      PRICE: newPrice,
-      PARAMETER: invalidTickerParameter,
-      MESSAGE: message
-    } = JSON.parse(
+    const parsedMessage = JSON.parse(
       e.data
     );
+    const {TYPE: type} = parsedMessage;
 
-    if (type === INVALID_TICKER && message === INVALID_TICKER_MESSAGE) {
-      let [, , fromCurrency, toCurrency] = invalidTickerParameter.split('~');
-      handleDoubleConversion(fromCurrency, toCurrency)
+    if (type === INVALID_TICKER) {
+      handleDoubleConversionMessageOnWs(parsedMessage)
     }
 
-    if (type !== AGGREGATE_INDEX || newPrice === undefined) {
-      return;
+    if (type === AGGREGATE_INDEX) {
+      handlePriceUpdateMessageOnWs(parsedMessage)
     }
-
-    if (fromCurrency === BTC_CURRENCY && toCurrency === USD_CURRENCY) {
-      btcToUsdPrice = newPrice;
-    }
-
-    let price = newPrice;
-    if (toCurrency === BTC_CURRENCY) {
-      price = newPrice * btcToUsdPrice;
-    }
-
-    const handlers = tickersHandlers.get(fromCurrency) ?? [];
-    handlers.forEach(fn => fn(price));
   }
 );
 
-function handleDoubleConversion(fromCurrency, toCurrency) {
-  if (toCurrency === BTC_CURRENCY)
+function handlePriceUpdateMessageOnWs(wsMessage) {
+  const {
+    FROMSYMBOL: fromCurrency,
+    TOSYMBOL: toCurrency,
+    PRICE: price,
+  } = wsMessage;
+
+  if (price === undefined) {
     return;
+  }
+
+  if (fromCurrency === BTC_CURRENCY && toCurrency === USD_CURRENCY) {
+    btcToUsdPrice = price;
+  }
+
+  let newPrice = price;
+  if (toCurrency === BTC_CURRENCY) {
+    newPrice = price * btcToUsdPrice;
+  }
+
+  const handlers = tickersHandlers.get(fromCurrency) ?? [];
+  handlers.forEach(fn => fn(newPrice));
+}
+
+
+function handleDoubleConversionMessageOnWs(wsMessage) {
+  const {
+    PARAMETER: invalidTickerParameter,
+    MESSAGE: message
+  } = wsMessage;
+
+  if (message !== INVALID_TICKER_MESSAGE) {
+    return;
+  }
+
+  const [, , fromCurrency, toCurrency] = invalidTickerParameter.split('~');
+  if (toCurrency === BTC_CURRENCY) {
+    return;
+  }
+
   if (!tickersHandlers.has(BTC_CURRENCY)) {
     subscribeToTicker(BTC_CURRENCY, () => {
     })
   }
-  subscribeToTickerOnWs(fromCurrency, BTC_CURRENCY)
+  subscribeToTickerOnWs(fromCurrency, BTC_CURRENCY);
+  doubleConvertedTickers.push(fromCurrency);
 }
 
 function sendToWebSocket(message) {
@@ -103,5 +122,13 @@ export const subscribeToTicker = (ticker, cb) => {
 export const unsubscribeFromTicker = ticker => {
   ticker = ticker.toUpperCase()
   tickersHandlers.delete(ticker);
+
+  const doubleConvertedIndex = doubleConvertedTickers.indexOf(ticker);
+  if (doubleConvertedIndex > - 1 ) {
+    unsubscribeFromTickerOnWs(ticker, BTC_CURRENCY);
+    doubleConvertedTickers.splice(doubleConvertedIndex, 1);
+  }
+
   unsubscribeFromTickerOnWs(ticker);
+
 };
