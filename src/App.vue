@@ -91,7 +91,8 @@
               :key="t.name"
               @click="select(t)"
               :class="{
-              'border-4': selectedTicker === t
+              'border-4': selectedTicker === t,
+              'bg-red-100': hasNoPrice(t.price)
             }"
               class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
@@ -189,7 +190,7 @@
 // [x] При удалении тикера остается выбор
 
 import {subscribeToTicker, unsubscribeFromTicker} from "./api";
-
+import constants from './constants';
 export default {
   name: "App",
 
@@ -243,8 +244,6 @@ export default {
       });
     }
 
-    setInterval(this.updateTickers, 5000);
-
     const f = await fetch(
         'https://min-api.cryptocompare.com/data/all/coinlist?summary=true'
     );
@@ -296,6 +295,9 @@ export default {
   },
 
   methods: {
+    hasNoPrice (price) {
+      return price === constants.NO_PRICE;
+    },
     updateTicker(tickerName, price) {
       this.tickers
           .filter(t => t.name === tickerName)
@@ -308,7 +310,7 @@ export default {
     },
 
     formatPrice(price) {
-      if (price === "-") {
+      if (price === constants.NO_PRICE) {
         return price;
       }
       return price > 1 ? price.toFixed(2) : price.toPrecision(2);
@@ -317,7 +319,7 @@ export default {
     add() {
       const currentTicker = {
         name: this.ticker,
-        price: "-"
+        price: constants.NO_PRICE
       };
       if (this.tickers.find(t => t.name.toUpperCase() === this.tickerUpperCase())) {
         this.tickerAlreadySelected = true;

@@ -52,12 +52,14 @@ function unsubscribeFromTickerOnWs(ticker) {
 }
 
 export const subscribeToTicker = (ticker, cb) => {
+  ticker = ticker.toUpperCase()
   const subscribers = tickersHandlers.get(ticker) || [];
   tickersHandlers.set(ticker, [...subscribers, cb]);
   subscribeToTickerOnWs(ticker);
 };
 
 export const unsubscribeFromTicker = ticker => {
+  ticker = ticker.toUpperCase()
   tickersHandlers.delete(ticker);
   unsubscribeFromTickerOnWs(ticker);
 };
