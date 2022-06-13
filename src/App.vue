@@ -1,8 +1,18 @@
 <template>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
+    <div v-if="spinner"
+         class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center">
+      <svg class="animate-spin -ml-1 mr-3 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+           viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
     <div class="container">
       <div class="w-full my-4"></div>
-      <add-ticker @add-ticker="add" :disabled="tooManyTickersAdded" />
+      <add-ticker @add-ticker="add" @ticker-select-changed="clearTickerAlreadySelected" :disabled="tooManyTickersAdded" :coin-list="coinList" :ticker-already-selected="tickerAlreadySelected"/>
+
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
         <div>
@@ -29,7 +39,8 @@
               :key="t.name"
               @click="select(t)"
               :class="{
-              'border-4': selectedTicker === t
+              'border-4': selectedTicker === t,
+              'bg-red-100': hasNoPrice(t.price)
             }"
               class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
@@ -131,6 +142,7 @@
 
 import { subscribeToTicker, unsubscribeFromTicker } from "./api";
 import AddTicker from "./components/AddTicker.vue";
+import constants from './constants';
 
 export default {
   name: "App",
@@ -141,19 +153,22 @@ export default {
 
   data() {
     return {
-      filter: "",
+      tickerAlreadySelected: false,
 
+      filter: "",
       tickers: [],
       selectedTicker: null,
 
       graph: [],
       maxGraphElements: 1,
 
-      page: 1
+      page: 1,
+      spinner: true,
+      coinList: [],
     };
   },
 
-  created() {
+  async created() {
     const windowData = Object.fromEntries(
         new URL(window.location).searchParams.entries()
     );
@@ -185,7 +200,12 @@ export default {
       });
     }
 
-    setInterval(this.updateTickers, 5000);
+    const f = await fetch(
+        'https://min-api.cryptocompare.com/data/all/coinlist?summary=true'
+    );
+    const data = await f.json();
+    this.spinner = false;
+    this.coinList = Object.values(data.Data);
   },
 
   mounted() {
@@ -243,6 +263,16 @@ export default {
   },
 
   methods: {
+    hasNoPrice (price) {
+      return price === constants.NO_PRICE;
+    },
+    clearTickerAlreadySelected(newTicker) {
+      if (newTicker === '')
+      {
+        return;
+      }
+      this.tickerAlreadySelected = false;
+    },
     calculateMaxGraphElements() {
       if (!this.$refs.graph) {
         return;
@@ -266,7 +296,7 @@ export default {
     },
 
     formatPrice(price) {
-      if (price === "-") {
+      if (price === constants.NO_PRICE) {
         return price;
       }
       return price > 1 ? price.toFixed(2) : price.toPrecision(2);
@@ -275,16 +305,18 @@ export default {
     add(ticker) {
       const currentTicker = {
         name: ticker,
-        price: "-"
+        price: constants.NO_PRICE
       };
-
+      if (this.tickers.find(t => t.name.toUpperCase() === ticker.toUpperCase())) {
+        this.tickerAlreadySelected = true;
+        return;
+      }
       this.tickers = [...this.tickers, currentTicker];
       this.filter = "";
       subscribeToTicker(currentTicker.name, newPrice =>
           this.updateTicker(currentTicker.name, newPrice)
       );
     },
-
     select(ticker) {
       this.selectedTicker = ticker;
     },
@@ -328,6 +360,7 @@ export default {
           `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
       );
     }
-  }
+  },
+
 };
 </script>
