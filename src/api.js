@@ -1,5 +1,5 @@
 const API_KEY =
-  "380ec498044c900f249ad39326e8320a2cb4ee09b94afe4dff6911e37ef56bfc";
+  "380ec498044c900f249ad39326e8320a2cb4ee09b94afe4dff6911e37ef56bfc1";
 
 const tickersHandlers = new Map(); // {}
 const doubleConvertedTickers = [];

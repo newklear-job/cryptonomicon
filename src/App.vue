@@ -10,6 +10,7 @@
       </svg>
     </div>
     <div class="container">
+      <modal-homework />
       <div class="w-full my-4"></div>
       <add-ticker @add-ticker="add" @ticker-select-changed="clearTickerAlreadySelected" :disabled="tooManyTickersAdded"
                   :coin-list="coinList" :ticker-already-selected="tickerAlreadySelected"/>
@@ -109,6 +110,7 @@
 import {subscribeToTicker, unsubscribeFromTicker} from "./api";
 import AddTicker from "./components/AddTicker.vue";
 import PriceGraph from "./components/PriceGraph.vue";
+import ModalHomework from "./components/ModalHomework.vue";
 import constants from './constants';
 
 export default {
@@ -116,7 +118,8 @@ export default {
 
   components: {
     AddTicker,
-    PriceGraph
+    PriceGraph,
+    ModalHomework
   },
 
   data() {
