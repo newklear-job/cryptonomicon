@@ -1,5 +1,5 @@
 <template>
-  Please enter "I Understand"
+  Please enter "{{ $options.CONTROL_PHRASE }}"
   <input
       v-model="controlPhrase"
       type="text"
@@ -24,6 +24,7 @@ export default {
   emits: {
     close: null,
   },
+  CONTROL_PHRASE: "I Understand",
   data () {
     return {
       controlPhrase: ''
@@ -31,7 +32,7 @@ export default {
   },
   computed: {
     controlPhraseIsCorrect (){
-      return this.controlPhrase === 'I Understand';
+      return this.controlPhrase === this.$options.CONTROL_PHRASE;
     }
   }
 };
